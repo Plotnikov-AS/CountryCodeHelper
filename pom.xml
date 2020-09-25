@@ -10,6 +10,7 @@
     </parent>
     <groupId>my</groupId>
     <artifactId>CountryCodeHelper</artifactId>
+    <packaging>jar</packaging>
     <version>0.0.1-SNAPSHOT</version>
     <name>CountryCodeHelper</name>
     <description>Helps find country phone code</description>
@@ -71,6 +72,7 @@
                 <artifactId>spring-boot-maven-plugin</artifactId>
             </plugin>
         </plugins>
+        <finalName>CountryCodeHelper</finalName>
     </build>
 
 </project>
