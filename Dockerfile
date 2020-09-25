@@ -1,5 +1,5 @@
 #BUILD
-FROM maven:4.0.0-jdk-8 AS build
+FROM maven:3.6.3-jdk-8 AS build
 COPY src home/app/src
 COPY pom.xml home/app
 RUN mvn -f /home/add/pom.xml clean package
