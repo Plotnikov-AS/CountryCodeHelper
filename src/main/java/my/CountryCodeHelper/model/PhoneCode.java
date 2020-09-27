@@ -1,7 +1,6 @@
 package my.CountryCodeHelper.model;
 
 import javax.persistence.*;
-import java.sql.Date;
 
 @Entity
 @Table(name = "table_phone_code")
@@ -9,12 +8,12 @@ public class PhoneCode {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+    @Column(name = "country_code")
+    private String countryCode;
     @Column(name = "phone_code")
     private String phoneCode;
-    @Column(name = "phone2country")
-    private Long phone2country;
-    @Column(name = "upd_time")
-    private Date updTime;
+    @OneToOne(mappedBy = "phoneCode")
+    private Country country;
 
     public Long getId() {
         return id;
@@ -32,19 +31,19 @@ public class PhoneCode {
         this.phoneCode = phoneCode;
     }
 
-    public Long getPhone2country() {
-        return phone2country;
+    public String getCountryCode() {
+        return countryCode;
     }
 
-    public void setPhone2country(Long phone2country) {
-        this.phone2country = phone2country;
+    public void setCountryCode(String countryCode) {
+        this.countryCode = countryCode;
     }
 
-    public Date getUpdTime() {
-        return updTime;
+    public Country getCountry() {
+        return country;
     }
 
-    public void setUpdTime(Date updTime) {
-        this.updTime = updTime;
+    public void setCountry(Country country) {
+        this.country = country;
     }
 }

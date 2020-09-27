@@ -15,6 +15,9 @@ public class Country {
     private String countryName;
     @Column(name = "upd_time")
     private Date updTime;
+    @OneToOne(cascade = CascadeType.ALL)
+    @JoinColumn(name = "country2phone", referencedColumnName = "id")
+    private PhoneCode phoneCode;
 
     public Long getId() {
         return id;
@@ -46,5 +49,13 @@ public class Country {
 
     public void setUpdTime(Date updTime) {
         this.updTime = updTime;
+    }
+
+    public PhoneCode getPhoneCode() {
+        return phoneCode;
+    }
+
+    public void setPhoneCode(PhoneCode phoneCode) {
+        this.phoneCode = phoneCode;
     }
 }

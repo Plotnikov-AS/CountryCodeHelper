@@ -4,12 +4,15 @@ import my.CountryCodeHelper.external.ErrorCode;
 import my.CountryCodeHelper.external.ExecuteExtSystemImpl;
 import my.CountryCodeHelper.external.ExtRequest;
 import my.CountryCodeHelper.external.ExtResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 
 public class CountryIOExec extends ExecuteExtSystemImpl {
+    private static Logger logger = LoggerFactory.getLogger(ExecuteExtSystemImpl.class);
 
     public CountryIOExec(ExtRequest request) {
         super(request);
@@ -26,8 +29,8 @@ public class CountryIOExec extends ExecuteExtSystemImpl {
                 getResponse().setErrorCode(ErrorCode.ERROR_CODE_FAILURE);
             }
         } catch (IOException e) {
-            //TODO log here
-            e.printStackTrace();
+            logger.error("Cannot receive data from " + getRequest().getExtSysUrl());
+            logger.error(e.getMessage());
             getResponse().setErrorCode(ErrorCode.ERROR_CODE_FAILURE);
         }
         return getResponse();
@@ -36,14 +39,6 @@ public class CountryIOExec extends ExecuteExtSystemImpl {
     @Override
     protected InputStream receiveData() throws IOException {
         String dataPath = getRequest().getExtSysUrl();
-        switch (getRequest().getMethod()) {
-            case GET_COUNTRIES:
-                dataPath += "names.json";
-                break;
-            case GET_PHONE_CODES:
-                dataPath += "phone.json";
-                break;
-        }
         return new URL(dataPath).openStream();
     }
 }
