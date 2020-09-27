@@ -1,30 +1,35 @@
---Таблица пользователей
-create table usr
+--Таблица имён и кодов стран
+create table table_country
 (
-    id       bigserial not null
-        constraint usr_pk
-            primary key,
-    active   boolean   not null,
-    name     varchar(255) default NULL::character varying,
-    password varchar(255) default NULL::character varying,
-    username varchar(255) default NULL::character varying
+    id bigserial not null,
+    country_code varchar not null,
+    country_name varchar not null,
+    upd_time timestamp not null
 );
 
-alter table usr
-    owner to postgres;
+create unique index table_country_id_uindex
+    on table_country (id);
 
---Таблица ролей пользователей
-create table user_role
+alter table table_country
+    add constraint table_country_pk
+        primary key (id);
+
+create index table_country_code_index on table_country (country_code);
+
+--Таблица телефонных кодов
+create table table_phone_code
 (
-    user_id bigint
-        constraint fkfpm8swft53ulq2hl11yplpr5
-            references usr,
-    roles   varchar(255)
+    id bigserial not null,
+    phone_code varchar,
+    phone2country bigint not null,
+    upd_time timestamp not null
 );
 
-alter table user_role
-    owner to postgres;
+create unique index table_phone_code_id_uindex
+    on table_phone_code (id);
 
---Добавление админ-пользователя
-INSERT INTO usr (active, name, password, username) VALUES (true, 'Admin', 'admin', 'admin');
-INSERT INTO user_role (user_id, roles) VALUES ((select id from usr where username = 'admin'), 'ADMIN');
+alter table table_phone_code
+    add constraint table_phone_code_pk
+        primary key (id);
+
+create index table_phone2country_index on table_phone_code (phone2country);
