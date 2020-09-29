@@ -46,4 +46,9 @@ public class PhoneCode {
     public void setCountry(Country country) {
         this.country = country;
     }
+
+    @Override
+    public String toString() {
+        return "PhoneCode: {Id:" + id + "; Country code:" + countryCode + "; Phone code:" + phoneCode + ";}";
+    }
 }

@@ -4,7 +4,6 @@ create table table_country
     id bigserial not null,
     country_code varchar not null,
     country_name varchar not null,
-    upd_time timestamp not null,
     country2phone bigint
 );
 

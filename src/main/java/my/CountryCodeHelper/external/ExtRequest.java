@@ -2,33 +2,42 @@ package my.CountryCodeHelper.external;
 
 public class ExtRequest {
     public static class Builder {
-        private String extSysUrl;
+        private ExtSystem extSystem;
+        private ExtMethods method;
 
-        public Builder(){
+        public Builder() {
         }
 
-        public Builder setExtSysUrl(String extSysUrl) {
-            this.extSysUrl = extSysUrl;
+        public Builder setExtSystem(ExtSystem extSystem) {
+            this.extSystem = extSystem;
             return this;
         }
 
+        public Builder setMethod(ExtMethods method) {
+            this.method = method;
+            return this;
+        }
 
         public ExtRequest build() {
             ExtRequest request = new ExtRequest();
-            request.extSysUrl = this.extSysUrl;
+            request.extSystem = this.extSystem;
+            request.method = this.method;
             return request;
         }
     }
 
-    private String extSysUrl;
+    private ExtSystem extSystem;
+    private ExtMethods method;
 
     private ExtRequest() {
     }
 
 
-    public String getExtSysUrl() {
-        return extSysUrl;
+    public ExtSystem getExtSystem() {
+        return extSystem;
     }
 
-
+    public ExtMethods getMethod() {
+        return method;
+    }
 }

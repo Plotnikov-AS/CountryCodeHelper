@@ -1,4 +1,4 @@
-package my.CountryCodeHelper.repo;
+package my.CountryCodeHelper.repo.repo;
 
 import my.CountryCodeHelper.model.PhoneCode;
 import org.springframework.data.jpa.repository.JpaRepository;

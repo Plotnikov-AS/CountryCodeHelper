@@ -1,46 +1,61 @@
 package my.CountryCodeHelper.controller;
 
-import my.CountryCodeHelper.model.Country;
-import my.CountryCodeHelper.repo.CountryRepo;
-import my.CountryCodeHelper.service.CountriesDownloadService;
-import my.CountryCodeHelper.service.PhoneCodesDownloadService;
+import my.CountryCodeHelper.service.CountryPhonesCombinerService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 
-import java.util.*;
+import java.util.List;
+import java.util.Map;
 
 @Controller
 @RequestMapping("/code")
 public class CodeController {
-    @Autowired
-    CountryRepo countryRepo;
-    @Autowired
-    CountriesDownloadService countriesDownloadService;
-    @Autowired
-    PhoneCodesDownloadService phoneCodesDownloadService;
+    private static final Logger logger = LoggerFactory.getLogger(CodeController.class);
+    private final CountryPhonesCombinerService combinerService;
 
-    @GetMapping()
-    public ResponseEntity<Object> showPhoneCodesForCountries(String countryName) {
-        List<Map<String, String>> country2phones = findCountriesAndPhoneCodes(countryName);
-        return new ResponseEntity<>(country2phones, HttpStatus.OK);
+    @Autowired
+    public CodeController(CountryPhonesCombinerService combinerService) {
+        this.combinerService = combinerService;
     }
 
-    private List<Map<String, String>> findCountriesAndPhoneCodes(String countryName) {
-        countriesDownloadService.downloadData();
-        phoneCodesDownloadService.downloadData();
-        List<Map<String, String>> country2phonesList = new ArrayList<>();
-        Set<Country> countries = countryRepo.findByCountryNameContaining(countryName);
-        countries.forEach(country -> {
-            Map<String, String> country2phones = new HashMap<>();
-            country2phones.put("countryCode", country.getCountryCode());
-            country2phones.put("countryName", country.getCountryName());
-            country2phones.put("phoneCode", country.getPhoneCode().getPhoneCode());
-            country2phonesList.add(country2phones);
-        });
-        return country2phonesList;
+    public ResponseEntity<Object> emptyRequest() {
+        return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+    }
+
+    @GetMapping
+    public ResponseEntity<Object> showPhoneCodesForCountries(String countryName) {
+        if (countryName.isEmpty()) return emptyRequest();
+        List<Map<String, String>> country2phones;
+        try {
+            logger.info("Start searching info for country name, contains " + countryName);
+            country2phones = combinerService.getCombinedCountryAndPhone(countryName);
+        } catch (DataAccessResourceFailureException e) {
+            logger.warn("Cant reach database.");
+            country2phones = combinerService.getCombinedCountryAndPhoneDirectlyFromExtSystem(countryName);
+        }
+        return makeResponse(country2phones);
+    }
+
+    private ResponseEntity<Object> makeResponse(List<Map<String, String>> data) {
+        if (data.isEmpty()) {
+            return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+        } else {
+            logger.info("Sending response: " + data);
+            return new ResponseEntity<>(data, HttpStatus.OK);
+        }
+    }
+
+    @ExceptionHandler(RuntimeException.class)
+    public final ResponseEntity<Exception> handleAllExceptions(RuntimeException ex) {
+        logger.error("INTERNAL ERROR! " + ex.getMessage());
+        return new ResponseEntity<>(ex, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 }
