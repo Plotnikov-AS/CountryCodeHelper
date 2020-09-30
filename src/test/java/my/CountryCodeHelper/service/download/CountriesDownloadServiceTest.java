@@ -73,6 +73,7 @@ class CountriesDownloadServiceTest {
     void setMockOutput() {
         when(countryRepo.getByCountryCode(anyString())).thenReturn(correctCountry);
         doNothing().when(countryRepo).save(any());
+
         MockitoAnnotations.initMocks(this);
     }
 

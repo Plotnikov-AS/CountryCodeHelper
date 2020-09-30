@@ -22,12 +22,12 @@ public class PhoneCodeRepoProxy {
 
     @CachePut
     public PhoneCode getByCountryCode(String countryCode) {
-        logger.info("Getting entity from DB with country code " + countryCode);
+        logger.info("... Getting entity from DB with country code " + countryCode);
         return phoneCodeRepo.getByCountryCode(countryCode);
     }
 
     public void save(PhoneCode phoneCode) {
-        logger.info("Saving entity in DB: " + phoneCode.toString());
+        logger.info("... Saving entity in DB: " + phoneCode.toString());
         phoneCodeRepo.save(phoneCode);
     }
 

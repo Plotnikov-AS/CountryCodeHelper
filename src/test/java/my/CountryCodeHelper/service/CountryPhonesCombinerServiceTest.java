@@ -4,31 +4,33 @@ import my.CountryCodeHelper.exception.DownloadingException;
 import my.CountryCodeHelper.model.Country;
 import my.CountryCodeHelper.model.PhoneCode;
 import my.CountryCodeHelper.repo.proxy.CountryRepoProxy;
+import my.CountryCodeHelper.repo.proxy.PhoneCodeRepoProxy;
 import my.CountryCodeHelper.service.download.CountriesDownloadService;
 import my.CountryCodeHelper.service.download.PhoneCodesDownloadService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.dao.DataAccessResourceFailureException;
 
 import java.sql.Date;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @SpringBootTest
 class CountryPhonesCombinerServiceTest {
     @Mock
     CountryRepoProxy countryRepo;
+
+    @Mock
+    PhoneCodeRepoProxy phoneCodeRepo;
 
     @Mock
     CountriesDownloadService countriesDownloadService;
@@ -40,17 +42,38 @@ class CountryPhonesCombinerServiceTest {
     CountryPhonesCombinerService combinerService;
 
     Set<Country> countries;
+    Map<String, String> codes2countries;
+    Map<String, String> phones2codes;
+    PhoneCode phoneCode;
 
     @BeforeEach
-    void setUp() {
+    void setUp(TestInfo testInfo) {
         countries = createCountries();
-        setMockOutput();
-    }
+        phoneCode = new PhoneCode();
+        phoneCode.setId(1L);
+        phoneCode.setCountryCode("CD");
+        phoneCode.setPhoneCode("123");
 
-    void setMockOutput() throws DownloadingException {
-        doNothing().when(countriesDownloadService).execute();
-        doNothing().when(phoneCodesDownloadService).execute();
-        when(countryRepo.findByCountryNameContainingIgnoreCase(anyString())).thenReturn(countries);
+        if (testInfo.getTestMethod().get().getName().equalsIgnoreCase("getCombinedCountryAndPhone")) {
+            doNothing().when(countriesDownloadService).execute();
+            doNothing().when(phoneCodesDownloadService).execute();
+            when(phoneCodeRepo.getByCountryCode(anyString())).thenReturn(phoneCode);
+            when(countryRepo.findByCountryNameContainingIgnoreCase(anyString())).thenReturn(countries);
+
+        } else if (testInfo.getTestMethod().get().getName().equalsIgnoreCase("getCombinedWhenDatabaseUnavailable")) {
+            when(phoneCodeRepo.getByCountryCode(anyString())).thenReturn(phoneCode);
+            doThrow(new DataAccessResourceFailureException("")).when(countriesDownloadService).execute();
+            doThrow(new DataAccessResourceFailureException("")).when(phoneCodesDownloadService).execute();
+            when(countryRepo.findByCountryNameContainingIgnoreCase(anyString())).thenThrow(DataAccessResourceFailureException.class);
+
+        } else if (testInfo.getTestMethod().get().getName().equalsIgnoreCase("getCombinedWhenExtSystemUnavailable")) {
+            when(phoneCodeRepo.getByCountryCode(anyString())).thenReturn(phoneCode);
+            doThrow(DownloadingException.class).when(countriesDownloadService).execute();
+            doThrow(DownloadingException.class).when(phoneCodesDownloadService).execute();
+            when(countryRepo.findByCountryNameContainingIgnoreCase(anyString())).thenReturn(countries);
+
+        }
+
         MockitoAnnotations.initMocks(this);
     }
 
@@ -61,7 +84,20 @@ class CountryPhonesCombinerServiceTest {
         country2phonesList.forEach(e -> {
             assertEquals(3, e.size());
         });
-        System.out.println(country2phonesList);
+    }
+
+    @Test
+    void getCombinedWhenDatabaseUnavailable() {
+        assertEquals(ArrayList.class, combinerService.getCombinedCountryAndPhone("BR").getClass());
+    }
+
+    @Test
+    void getCombinedWhenExtSystemUnavailable() {
+        List<Map<String, String>> country2phonesList = combinerService.getCombinedCountryAndPhone("BR");
+        assertNotEquals(0, country2phonesList.size());
+        country2phonesList.forEach(e -> {
+            assertEquals(3, e.size());
+        });
     }
 
     private Set<Country> createCountries() {
@@ -81,5 +117,19 @@ class CountryPhonesCombinerServiceTest {
             countries.add(country);
         }
         return countries;
+    }
+
+    private Map<String, String> createCodes2countries() {
+        Map<String, String> codes2countries = new HashMap<>();
+        codes2countries.put("CD", "someName");
+        codes2countries.put("FD", "moreName");
+        return codes2countries;
+    }
+
+    private Map<String, String> createPhones2codes() {
+        Map<String, String> codes2countries = new HashMap<>();
+        codes2countries.put("CD", "123");
+        codes2countries.put("FD", "435");
+        return codes2countries;
     }
 }
