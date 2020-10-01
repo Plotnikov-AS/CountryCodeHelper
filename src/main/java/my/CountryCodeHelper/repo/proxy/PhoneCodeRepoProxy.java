@@ -28,7 +28,7 @@ public class PhoneCodeRepoProxy {
         Set<PhoneCode> phoneCodes = phoneCodeRepo.getByCountryCodeIn(countryCodes);
         if (phoneCodes == null) {
             logger.info("... Phones not found");
-            return null;
+            return new HashMap<>();
         } else {
             Map<String, PhoneCode> result = new HashMap<>();
             phoneCodes.forEach((phoneCode -> result.put(phoneCode.getCountryCode(), phoneCode)));
@@ -41,9 +41,7 @@ public class PhoneCodeRepoProxy {
         logger.info("... Getting phone from database with country code " + countryCode);
         PhoneCode phoneCode = phoneCodeRepo.getByCountryCode(countryCode);
         if (phoneCode == null) {
-            logger.info("... Country not found");
-        } else {
-            logger.info("... Getted phoneCode: " + phoneCode.toString());
+            logger.info("... Phone not found");
         }
         return phoneCode;
     }

@@ -13,6 +13,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 @Component
@@ -32,8 +33,8 @@ public class CountryRepoProxy {
     public Map<String, Country> getByCountryCodeIn(Set<String> countryCodes) {
         Set<Country> countries = countryRepo.getByCountryCodeIn(countryCodes);
         if (countries == null) {
-            logger.info("... Country not found");
-            return null;
+            logger.info("... Countries not found");
+            return new HashMap<>();
         } else {
             Map<String, Country> result = new HashMap<>();
             countries.forEach((country -> result.put(country.getCountryCode(), country)));
@@ -48,8 +49,6 @@ public class CountryRepoProxy {
         Country country = countryRepo.getByCountryCode(countryCode);
         if (country == null) {
             logger.info("... Country not found");
-        } else {
-            logger.info("... Getted country: " + country.toString());
         }
         return country;
     }
@@ -60,8 +59,6 @@ public class CountryRepoProxy {
         Set<Country> countries = countryRepo.findByCountryNameContainingIgnoreCase(countryName);
         if (countries == null) {
             logger.info("... Countries not found");
-        } else {
-            logger.info("... Getted countries: " + countries);
         }
         return countries;
     }
@@ -74,7 +71,7 @@ public class CountryRepoProxy {
     @Scheduled(cron = "0 0/30 * * * ?")
     public void clearCacheSchedule() {
         try {
-            cacheManager.getCache("countries").clear();
+            Objects.requireNonNull(cacheManager.getCache("countries")).clear();
         } catch (NullPointerException e) {
             logger.error(e.getMessage());
         }

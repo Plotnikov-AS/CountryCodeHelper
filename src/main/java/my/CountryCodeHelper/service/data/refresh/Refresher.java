@@ -35,7 +35,7 @@ public class Refresher {
         runningServices.put(dataDownloadService.getClass(), downloadThread);
         logger.info("... Services on air: " + runningServicesToPrettyString());
         downloadThread.start();
-        createChecker(dataDownloadService, downloadThread);
+        createWatcher(dataDownloadService, downloadThread);
     }
 
     private static synchronized void runUpdate(DataService dataService) {
@@ -44,21 +44,18 @@ public class Refresher {
         Thread updateThread = new Thread(dataUpdateService);
         runningServices.put(dataUpdateService.getClass(), updateThread);
         updateThread.start();
-        createChecker(dataUpdateService, updateThread);
+        createWatcher(dataUpdateService, updateThread);
     }
 
-    private static synchronized void createChecker(DataService dataService, Thread thread) {
-        logger.info("... Creating checker for " + dataService.getClass().getSimpleName());
-        RefreshRunningChecker checker = new RefreshRunningChecker(dataService, thread);
+    private static synchronized void createWatcher(DataService dataService, Thread thread) {
+        logger.info("... Creating watcher for " + dataService.getClass().getSimpleName());
+        RefreshRunningWatcher checker = new RefreshRunningWatcher(dataService, thread);
         Thread checkerThread = new Thread(checker);
         checkerThread.start();
     }
 
     public static synchronized boolean isRefreshRunning(Class<? extends DataService> service) {
-        if (runningServices.containsKey(service)) {
-            return true;
-        }
-        return false;
+        return runningServices.containsKey(service);
     }
 
     public static synchronized void setFinished(DataService dataService) {

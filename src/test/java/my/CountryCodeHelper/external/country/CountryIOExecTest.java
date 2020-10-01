@@ -2,6 +2,7 @@ package my.CountryCodeHelper.external.country;
 
 import my.CountryCodeHelper.external.ExtRequest;
 import my.CountryCodeHelper.external.ExtResponse;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
@@ -21,6 +22,8 @@ import static org.mockito.Mockito.when;
 
 @SpringBootTest
 class CountryIOExecTest {
+    AutoCloseable closeable;
+
     @Mock
     ExtRequest request;
 
@@ -31,7 +34,12 @@ class CountryIOExecTest {
 
     @BeforeEach
     void setUp() {
-        MockitoAnnotations.initMocks(this);
+        closeable = MockitoAnnotations.openMocks(this);
+    }
+
+    @AfterEach
+    void closeMocks() throws Exception {
+        closeable.close();
     }
 
     @Test

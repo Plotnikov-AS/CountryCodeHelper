@@ -1,31 +1,37 @@
 package my.CountryCodeHelper.service;
 
 import my.CountryCodeHelper.exception.DownloadingException;
+import my.CountryCodeHelper.external.ExtResponse;
 import my.CountryCodeHelper.model.Country;
 import my.CountryCodeHelper.model.PhoneCode;
 import my.CountryCodeHelper.repo.proxy.CountryRepoProxy;
 import my.CountryCodeHelper.repo.proxy.PhoneCodeRepoProxy;
+import my.CountryCodeHelper.service.data.DataService;
 import my.CountryCodeHelper.service.data.download.CountriesDownloadService;
+import my.CountryCodeHelper.service.data.download.DataDownloadService;
 import my.CountryCodeHelper.service.data.download.PhoneCodesDownloadService;
 import my.CountryCodeHelper.service.data.refresh.Refresher;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestInfo;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.MockitoAnnotations;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.dao.DataAccessResourceFailureException;
 
+import java.io.ByteArrayInputStream;
 import java.util.*;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 @SpringBootTest
 class CountryPhonesCombinerServiceTest {
+    AutoCloseable closeable;
+
     @Mock
     CountryRepoProxy countryRepo;
 
@@ -42,90 +48,100 @@ class CountryPhonesCombinerServiceTest {
     CountryPhonesCombinerService combinerService;
 
     Set<Country> countries;
-    Map<String, String> codes2countries;
-    Map<String, String> phones2codes;
     PhoneCode phoneCode;
 
     @BeforeEach
-    void setUp(TestInfo testInfo) {
+    void setUp() {
         countries = createCountries();
         phoneCode = new PhoneCode();
         phoneCode.setId(1L);
         phoneCode.setCountryCode("CD");
         phoneCode.setPhoneCode("123");
+        closeable = MockitoAnnotations.openMocks(this);
+    }
 
-        if (testInfo.getTestMethod().get().getName().equalsIgnoreCase("getCombinedCountryAndPhone")) {
-            doNothing().when(Refresher.class);
-            when(phoneCodeRepo.getByCountryCode(anyString())).thenReturn(phoneCode);
-            when(countryRepo.findByCountryNameContainingIgnoreCase(anyString())).thenReturn(countries);
-
-        } else if (testInfo.getTestMethod().get().getName().equalsIgnoreCase("getCombinedWhenDatabaseUnavailable")) {
-            when(phoneCodeRepo.getByCountryCode(anyString())).thenReturn(phoneCode);
-            doThrow(new DataAccessResourceFailureException("")).when(Refresher.class);
-            when(countryRepo.findByCountryNameContainingIgnoreCase(anyString())).thenThrow(DataAccessResourceFailureException.class);
-
-        } else if (testInfo.getTestMethod().get().getName().equalsIgnoreCase("getCombinedWhenExtSystemUnavailable")) {
-            when(phoneCodeRepo.getByCountryCode(anyString())).thenReturn(phoneCode);
-            doThrow(DownloadingException.class).when(Refresher.class);
-            when(countryRepo.findByCountryNameContainingIgnoreCase(anyString())).thenReturn(countries);
-
-        }
-
-        MockitoAnnotations.initMocks(this);
+    @AfterEach
+    void closeMocks() throws Exception {
+        closeable.close();
     }
 
     @Test
     void getCombinedCountryAndPhone() {
-        List<Map<String, String>> country2phonesList = combinerService.getCombinedCountryAndPhone("BR");
-        assertNotEquals(0, country2phonesList.size());
-        country2phonesList.forEach(e -> {
-            assertEquals(3, e.size());
-        });
+        try (MockedStatic<Refresher> mockedRefresher = mockStatic(Refresher.class)) {
+            combinerService = new CountryPhonesCombinerService(countryRepo, phoneCodeRepo, countriesDownloadService, phoneCodesDownloadService);
+            mockedRefresher.when(() -> Refresher.refresh(any(DataDownloadService.class))).thenAnswer(invocationOnMock -> null);
+            mockedRefresher.when(Refresher::isCountriesRefreshRunning).thenReturn(false);
+            assertFalse(Refresher.isCountriesRefreshRunning());
+            mockedRefresher.when(Refresher::isPhonesRefreshRunning).thenReturn(false);
+            assertFalse(Refresher.isCountriesRefreshRunning());
+            when(countryRepo.findByCountryNameContainingIgnoreCase(anyString())).thenReturn(countries);
+            when(phoneCodeRepo.getByCountryCode(anyString())).thenReturn(phoneCode);
+            List<Map<String, String>> country2phonesList = combinerService.getCombinedCountryAndPhone("BR");
+            assertNotEquals(0, country2phonesList.size());
+            country2phonesList.forEach(e -> assertEquals(3, e.size()));
+        }
     }
 
     @Test
     void getCombinedWhenDatabaseUnavailable() {
-        assertEquals(ArrayList.class, combinerService.getCombinedCountryAndPhone("BR").getClass());
+        combinerService = new CountryPhonesCombinerService(countryRepo, phoneCodeRepo, countriesDownloadService, phoneCodesDownloadService);
+        ExtResponse countriesResponse = new ExtResponse();
+        countriesResponse.setReceivedData(new ByteArrayInputStream("{\"BD\": \"Bangladesh\"}".getBytes()));
+        when(countriesDownloadService.downloadData()).thenReturn(countriesResponse);
+        ExtResponse phonesResponse = new ExtResponse();
+        phonesResponse.setReceivedData(new ByteArrayInputStream("{\"BD\": \"880\"}".getBytes()));
+        when(phoneCodesDownloadService.downloadData()).thenReturn(phonesResponse);
+        when(countryRepo.findByCountryNameContainingIgnoreCase(anyString())).thenThrow(new DataAccessResourceFailureException("err"));
+        List<Map<String, String>> result = combinerService.getCombinedCountryAndPhone("ba");
+        assertEquals(ArrayList.class, result.getClass());
+        assertEquals(1, result.size());
+        assertEquals(3, result.get(0).size());
+        assertEquals("BD", result.get(0).get("countryCode"));
+        assertEquals("Bangladesh", result.get(0).get("countryName"));
+        assertEquals("880", result.get(0).get("phoneCode"));
     }
 
     @Test
     void getCombinedWhenExtSystemUnavailable() {
-        List<Map<String, String>> country2phonesList = combinerService.getCombinedCountryAndPhone("BR");
-        assertNotEquals(0, country2phonesList.size());
-        country2phonesList.forEach(e -> {
-            assertEquals(3, e.size());
-        });
+        try (MockedStatic<Refresher> mockedRefresher = mockStatic(Refresher.class)) {
+            mockedRefresher.when(Refresher::isCountriesRefreshRunning).thenReturn(false);
+            assertFalse(Refresher.isCountriesRefreshRunning());
+            mockedRefresher.when(() -> Refresher.refresh(any(DataDownloadService.class))).thenAnswer(invocationOnMock -> null);
+            mockedRefresher.when(() -> Refresher.isRefreshRunning(DataService.class)).thenReturn(false);
+            assertFalse(Refresher.isRefreshRunning(DataService.class));
+            when(countryRepo.findByCountryNameContainingIgnoreCase(anyString())).thenReturn(countries);
+            combinerService = new CountryPhonesCombinerService(countryRepo, phoneCodeRepo, countriesDownloadService, phoneCodesDownloadService);
+            List<Map<String, String>> result = combinerService.getCombinedCountryAndPhone("ba");
+            assertEquals(ArrayList.class, result.getClass());
+            assertEquals(1, result.size());
+            assertEquals(3, result.get(0).size());
+            assertEquals("BD", result.get(0).get("countryCode"));
+            assertEquals("Bangladesh", result.get(0).get("countryName"));
+            assertEquals("880", result.get(0).get("phoneCode"));
+        }
+    }
+
+    @Test
+    void getCombinedWhenExtSystemAndDatabaseUnavailable() {
+        combinerService = new CountryPhonesCombinerService(countryRepo, phoneCodeRepo, countriesDownloadService, phoneCodesDownloadService);
+        when(countryRepo.findByCountryNameContainingIgnoreCase(anyString())).thenThrow(new DataAccessResourceFailureException("err"));
+        when(countriesDownloadService.downloadData()).thenThrow(new DownloadingException("err"));
+        assertThrows(DownloadingException.class, () -> combinerService.getCombinedCountryAndPhone("be"));
     }
 
     private Set<Country> createCountries() {
         Set<Country> countries = new HashSet<>();
-        for (long i = 0; i < 5; i++) {
-            Country country = new Country();
-            country.setId(i);
-            country.setCountryCode("CD" + i);
-            country.setCountryName("cntrNm");
-            PhoneCode phoneCode = new PhoneCode();
-            phoneCode.setId(i);
-            phoneCode.setCountryCode("CD" + i);
-            phoneCode.setPhoneCode("123");
-            phoneCode.setCountry(country);
-            country.setPhoneCode(phoneCode);
-            countries.add(country);
-        }
+        Country country = new Country();
+        country.setId(1L);
+        country.setCountryCode("BD");
+        country.setCountryName("Bangladesh");
+        PhoneCode phoneCode = new PhoneCode();
+        phoneCode.setId(1L);
+        phoneCode.setCountryCode("BD");
+        phoneCode.setPhoneCode("880");
+        phoneCode.setCountry(country);
+        country.setPhoneCode(phoneCode);
+        countries.add(country);
         return countries;
-    }
-
-    private Map<String, String> createCodes2countries() {
-        Map<String, String> codes2countries = new HashMap<>();
-        codes2countries.put("CD", "someName");
-        codes2countries.put("FD", "moreName");
-        return codes2countries;
-    }
-
-    private Map<String, String> createPhones2codes() {
-        Map<String, String> codes2countries = new HashMap<>();
-        codes2countries.put("CD", "123");
-        codes2countries.put("FD", "435");
-        return codes2countries;
     }
 }

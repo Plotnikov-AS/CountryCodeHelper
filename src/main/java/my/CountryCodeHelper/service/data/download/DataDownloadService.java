@@ -10,7 +10,6 @@ import org.springframework.dao.DataAccessResourceFailureException;
 
 public abstract class DataDownloadService implements Runnable, DataService {
     private static final Logger logger = LoggerFactory.getLogger(DataDownloadService.class);
-    protected boolean downloading;
     protected DataUpdateService dataUpdateService;
 
     @Override
@@ -23,13 +22,8 @@ public abstract class DataDownloadService implements Runnable, DataService {
     }
 
     private void execute() throws DownloadingException, DataAccessResourceFailureException {
-        try {
-            setDownloading(true);
             ExtResponse response = downloadData();
             dataUpdateService.setResponse(response);
-        } finally {
-            setDownloading(false);
-        }
     }
 
     public abstract ExtResponse downloadData() throws DownloadingException;
@@ -38,13 +32,5 @@ public abstract class DataDownloadService implements Runnable, DataService {
 
     public DataUpdateService getDataUpdateService() {
         return dataUpdateService;
-    }
-
-    public boolean isDownloading() {
-        return downloading;
-    }
-
-    protected void setDownloading(boolean downloading) {
-        this.downloading = downloading;
     }
 }

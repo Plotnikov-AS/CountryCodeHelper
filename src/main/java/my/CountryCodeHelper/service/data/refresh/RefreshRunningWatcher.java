@@ -5,12 +5,12 @@ import my.CountryCodeHelper.service.data.download.DataDownloadService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-class RefreshRunningChecker implements Runnable {
-    private static final Logger logger = LoggerFactory.getLogger(RefreshRunningChecker.class);
+class RefreshRunningWatcher implements Runnable {
+    private static final Logger logger = LoggerFactory.getLogger(RefreshRunningWatcher.class);
     private Thread refreshThread;
     private DataService dataService;
 
-    RefreshRunningChecker(DataService dataService, Thread refreshThread) {
+    RefreshRunningWatcher(DataService dataService, Thread refreshThread) {
         this.refreshThread = refreshThread;
         this.dataService = dataService;
     }

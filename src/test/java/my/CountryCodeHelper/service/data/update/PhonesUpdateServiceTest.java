@@ -6,27 +6,33 @@ import my.CountryCodeHelper.external.ExtResponse;
 import my.CountryCodeHelper.model.Country;
 import my.CountryCodeHelper.model.PhoneCode;
 import my.CountryCodeHelper.repo.proxy.PhoneCodeRepoProxy;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
 import java.io.ByteArrayInputStream;
+import java.util.HashMap;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.when;
 
 class PhonesUpdateServiceTest {
+    AutoCloseable closeable;
+
     @Mock
     PhoneCodeRepoProxy phoneCodeRepo;
 
+    @InjectMocks
     PhonesUpdateService phonesUpdateService;
 
     PhoneCode correctPhoneCode;
     Country correctCountry;
-
     ExtResponse failureResponse;
     ExtResponse badResponse;
     ExtResponse goodResponse;
@@ -58,34 +64,53 @@ class PhonesUpdateServiceTest {
 
         badResponse.setErrorCode(ErrorCode.ERROR_CODE_OK);
         badResponse.setReceivedData(new ByteArrayInputStream("some incorrect string".getBytes()));
-        when(phoneCodeRepo.getByCountryCode(anyString())).thenReturn(correctPhoneCode);
-        doNothing().when(phoneCodeRepo).save(any());
+
+        setMockOutput();
+    }
+
+    void setMockOutput() {
+        closeable = MockitoAnnotations.openMocks(this);
+    }
+
+    @AfterEach
+    void closeMocks() throws Exception {
+        closeable.close();
     }
 
     @Test
-    void updateData() throws DownloadingException {
+    void updateDataWithFailureResponse() {
         phonesUpdateService.setResponse(failureResponse);
         assertThrows(DownloadingException.class, () -> phonesUpdateService.update());
-        System.out.println("failure response passed");
-
-        phonesUpdateService.setResponse(badResponse);
-        assertThrows(DownloadingException.class, () -> phonesUpdateService.update());
-        System.out.println("incorrect string response passed");
-
-        badResponse.setReceivedData(null);
-        phonesUpdateService.setResponse(badResponse);
-        assertThrows(DownloadingException.class, () -> phonesUpdateService.update());
-        System.out.println("receivedData = null response passed");
-
-
-        badResponse.setReceivedData(new ByteArrayInputStream("".getBytes()));
-        phonesUpdateService.setResponse(badResponse);
-        assertThrows(DownloadingException.class, () -> phonesUpdateService.update());
-        System.out.println("Empty string response passed");
-
-        phonesUpdateService.setResponse(goodResponse);
-        phonesUpdateService.update();
-
     }
 
+    @Test
+    void updateDataWithIncorrectStringResponse() {
+        phonesUpdateService.setResponse(badResponse);
+        assertThrows(DownloadingException.class, () -> phonesUpdateService.update());
+    }
+
+    @Test
+    void updateDataWithNullReceivedData() {
+        phonesUpdateService.setResponse(badResponse);
+        badResponse.setReceivedData(null);
+        assertThrows(DownloadingException.class, () -> phonesUpdateService.update());
+    }
+
+    @Test
+    void updateDataWithEmptyStringResponse() {
+        phonesUpdateService.setResponse(badResponse);
+        badResponse.setReceivedData(new ByteArrayInputStream("".getBytes()));
+        assertThrows(DownloadingException.class, () -> phonesUpdateService.update());
+    }
+
+    @Test
+    void updateDataWithCorrectResponse() throws DownloadingException {
+        when(phoneCodeRepo.getByCountryCode(anyString())).thenReturn(correctPhoneCode);
+        doNothing().when(phoneCodeRepo).save(any());
+        phonesUpdateService.setResponse(goodResponse);
+        Map<String, PhoneCode> map = new HashMap<>();
+        map.put("BE", correctPhoneCode);
+        when(phoneCodeRepo.getByCountryCodeIn(anySet())).thenReturn(map);
+        phonesUpdateService.update();
+    }
 }

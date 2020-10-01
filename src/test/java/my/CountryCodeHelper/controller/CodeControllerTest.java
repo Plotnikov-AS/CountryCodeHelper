@@ -1,6 +1,7 @@
 package my.CountryCodeHelper.controller;
 
 import my.CountryCodeHelper.service.CountryPhonesCombinerService;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
@@ -21,6 +22,8 @@ import static org.mockito.Mockito.when;
 
 @SpringBootTest
 class CodeControllerTest {
+
+    AutoCloseable closeable;
 
     @Mock
     CountryPhonesCombinerService combinerService;
@@ -43,14 +46,19 @@ class CodeControllerTest {
 
     void setMockOutput() {
         when(combinerService.getCombinedCountryAndPhone(anyString())).thenReturn(country2phones);
-        MockitoAnnotations.initMocks(this);
+        closeable = MockitoAnnotations.openMocks(this);
+    }
+
+    @AfterEach
+    void closeMocks() throws Exception {
+        closeable.close();
     }
 
     @Test
     void showPhoneCodesForCountries() {
         ResponseEntity<Object> response = controller.showPhoneCodesForCountries("asd");
         assertEquals(200, response.getStatusCode().value());
-        List<HashMap<String, String>> body = (List) response.getBody();
+        List<HashMap<String, String>> body = (List<HashMap<String, String>>) response.getBody();
         assertNotNull(body);
         assertEquals(1, body.size());
         assertEquals(3, body.get(0).size());
@@ -58,7 +66,6 @@ class CodeControllerTest {
         assertEquals("some countryName", body.get(0).get("countryName"));
         assertEquals("123", body.get(0).get("phoneCode"));
     }
-
 
     @Test
     void handleAllExceptions() {

@@ -54,7 +54,7 @@ public class PhoneCode {
 
     @Override
     public boolean equals(Object obj) {
-        if (this.getClass() != obj.getClass()) {
+        if (obj == null || this.getClass() != obj.getClass()) {
             return false;
         }
         return ((PhoneCode) obj).getCountryCode().equalsIgnoreCase(this.countryCode)
