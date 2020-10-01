@@ -5,6 +5,7 @@ import my.CountryCodeHelper.model.Country;
 import my.CountryCodeHelper.model.PhoneCode;
 import my.CountryCodeHelper.repo.proxy.CountryRepoProxy;
 import my.CountryCodeHelper.repo.proxy.PhoneCodeRepoProxy;
+import my.CountryCodeHelper.service.data.DataService;
 import my.CountryCodeHelper.service.data.ResponseParser;
 import my.CountryCodeHelper.service.data.download.CountriesDownloadService;
 import my.CountryCodeHelper.service.data.download.PhoneCodesDownloadService;
@@ -43,9 +44,9 @@ public class CountryPhonesCombinerService {
             if (countries.isEmpty() && !Refresher.isCountriesRefreshRunning()) {
                 logger.info("... No countries in database. Start refreshing database from country.io");
                 Refresher.refresh(countriesDownloadService);
-                waitUntilCountriesUpdatingNotFinished();
+                waitUntilServiceNotFinished(CountriesUpdateService.class);
             } else if (countries.isEmpty() && Refresher.isCountriesRefreshRunning()) {
-                waitUntilCountriesUpdatingNotFinished();
+                waitUntilServiceNotFinished(CountriesUpdateService.class);
             }
             countries.forEach(country -> {
                 Map<String, String> country2phones = new HashMap<>();
@@ -55,10 +56,10 @@ public class CountryPhonesCombinerService {
                 if (phoneCode == null && !Refresher.isPhonesRefreshRunning()) {
                     logger.info("... Country with empty phone code. Start refreshing database from country.io");
                     Refresher.refresh(phoneCodesDownloadService);
-                    waitUntilPhonesUpdatingNotFinished();
+                    waitUntilServiceNotFinished(PhonesUpdateService.class);
                     phoneCode = phoneCodeRepo.getByCountryCode(country.getCountryCode());
                 } else if (phoneCode == null && Refresher.isPhonesRefreshRunning()) {
-                    waitUntilPhonesUpdatingNotFinished();
+                    waitUntilServiceNotFinished(PhonesUpdateService.class);
                 }
                 country2phones.put("phoneCode", phoneCode == null || phoneCode.getPhoneCode() == null ? "" : phoneCode.getPhoneCode());
                 country2phonesList.add(country2phones);
@@ -70,18 +71,8 @@ public class CountryPhonesCombinerService {
         }
     }
 
-    private synchronized void waitUntilCountriesUpdatingNotFinished() {
-        while (Refresher.isRefreshRunning(CountriesUpdateService.class)) {
-            try {
-                wait(100);
-            } catch (InterruptedException e) {
-                throw new DownloadingException(e);
-            }
-        }
-    }
-
-    private synchronized void waitUntilPhonesUpdatingNotFinished() {
-        while (Refresher.isRefreshRunning(PhonesUpdateService.class)) {
+    private synchronized void waitUntilServiceNotFinished(Class<? extends DataService> service) {
+        while (Refresher.isRefreshRunning(service)) {
             try {
                 wait(100);
             } catch (InterruptedException e) {

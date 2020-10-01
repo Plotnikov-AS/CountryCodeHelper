@@ -35,15 +35,7 @@ public class CodeController {
         List<Map<String, String>> country2phones;
         logger.info("... Start searching info for country name, contains " + countryName);
         country2phones = combinerService.getCombinedCountryAndPhone(countryName);
-        return makeResponse(country2phones);
-    }
-
-    private ResponseEntity<Object> makeResponse(List<Map<String, String>> data) {
-        if (data.isEmpty()) {
-            return new ResponseEntity<>(HttpStatus.NO_CONTENT);
-        } else {
-            return new ResponseEntity<>(data, HttpStatus.OK);
-        }
+        return country2phones.isEmpty() ? new ResponseEntity<>(HttpStatus.NO_CONTENT) : new ResponseEntity<>(country2phones, HttpStatus.OK);
     }
 
     @ExceptionHandler(RuntimeException.class)

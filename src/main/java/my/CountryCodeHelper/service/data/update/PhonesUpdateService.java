@@ -26,13 +26,12 @@ public class PhonesUpdateService extends DataUpdateService {
     }
 
     @Override
-    protected void update() throws DownloadingException, DataAccessResourceFailureException {
+    protected synchronized void update() throws DownloadingException, DataAccessResourceFailureException {
         switch (response.getErrorCode()) {
             case ERROR_CODE_OK:
                 Map<String, String> phones2countries = ResponseParser.parseToMap(response);
                 if (phones2countries == null)
                     throw new DownloadingException();
-                logger.info("... " + phones2countries.size() + " phones to update");
                 logger.info("... Check if countries updating not finished");
                 waitUntilCountriesUpdatingNotFinished();
                 logger.info("... Updating phones in database");

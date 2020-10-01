@@ -29,7 +29,6 @@ public class CountriesUpdateService extends DataUpdateService {
         switch (response.getErrorCode()) {
             case ERROR_CODE_OK:
                 Map<String, String> codes2countries = ResponseParser.parseToMap(response);
-                logger.info("... " + codes2countries.size() + " countries to update");
                 logger.info("... Updating countries in database");
                 Set<String> codes = new TreeSet<>();
                 codes2countries.forEach((key, value) -> codes.add(key));

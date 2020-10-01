@@ -56,7 +56,7 @@ public class Country {
 
     @Override
     public boolean equals(Object obj) {
-        if (this.getClass() != obj.getClass()) {
+        if (obj == null || this.getClass() != obj.getClass()) {
             return false;
         }
         return (((Country) obj).getCountryCode().equalsIgnoreCase(this.countryCode))
