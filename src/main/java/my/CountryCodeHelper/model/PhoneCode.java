@@ -49,6 +49,15 @@ public class PhoneCode {
 
     @Override
     public String toString() {
-        return "PhoneCode: {Id:" + id + "; Country code:" + countryCode + "; Phone code:" + phoneCode + ";}";
+        return "PhoneCode: {Country code:" + countryCode + "; Phone code:" + phoneCode + ";}";
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this.getClass() != obj.getClass()) {
+            return false;
+        }
+        return ((PhoneCode) obj).getCountryCode().equalsIgnoreCase(this.countryCode)
+                && ((PhoneCode) obj).getPhoneCode().equalsIgnoreCase(this.phoneCode);
     }
 }

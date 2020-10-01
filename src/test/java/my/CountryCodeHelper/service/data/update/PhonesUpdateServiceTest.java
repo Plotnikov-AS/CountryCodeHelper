@@ -1,4 +1,4 @@
-package my.CountryCodeHelper.service.download;
+package my.CountryCodeHelper.service.data.update;
 
 import my.CountryCodeHelper.exception.DownloadingException;
 import my.CountryCodeHelper.external.ErrorCode;
@@ -8,13 +8,9 @@ import my.CountryCodeHelper.model.PhoneCode;
 import my.CountryCodeHelper.repo.proxy.PhoneCodeRepoProxy;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
-import org.springframework.boot.test.context.SpringBootTest;
 
 import java.io.ByteArrayInputStream;
-import java.sql.Date;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -22,13 +18,11 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.when;
 
-@SpringBootTest
-class PhoneCodesDownloadServiceTest {
+class PhonesUpdateServiceTest {
     @Mock
     PhoneCodeRepoProxy phoneCodeRepo;
 
-    @InjectMocks
-    PhoneCodesDownloadService phoneCodesDownloadService;
+    PhonesUpdateService phonesUpdateService;
 
     PhoneCode correctPhoneCode;
     Country correctCountry;
@@ -36,7 +30,6 @@ class PhoneCodesDownloadServiceTest {
     ExtResponse failureResponse;
     ExtResponse badResponse;
     ExtResponse goodResponse;
-
 
     @BeforeEach
     void setUp() {
@@ -52,7 +45,6 @@ class PhoneCodesDownloadServiceTest {
         correctCountry.setCountryName("Belgium");
         correctCountry.setCountryCode(correctCountryCode);
         correctCountry.setPhoneCode(correctPhoneCode);
-        correctCountry.setUpdTime(new Date(System.currentTimeMillis()));
 
 
         failureResponse = new ExtResponse();
@@ -66,33 +58,34 @@ class PhoneCodesDownloadServiceTest {
 
         badResponse.setErrorCode(ErrorCode.ERROR_CODE_OK);
         badResponse.setReceivedData(new ByteArrayInputStream("some incorrect string".getBytes()));
-
-        setMockOutput();
-    }
-
-    void setMockOutput() {
         when(phoneCodeRepo.getByCountryCode(anyString())).thenReturn(correctPhoneCode);
         doNothing().when(phoneCodeRepo).save(any());
-        MockitoAnnotations.initMocks(this);
     }
 
     @Test
     void updateData() throws DownloadingException {
-        assertThrows(DownloadingException.class, () -> phoneCodesDownloadService.updateData(failureResponse));
+        phonesUpdateService.setResponse(failureResponse);
+        assertThrows(DownloadingException.class, () -> phonesUpdateService.update());
         System.out.println("failure response passed");
 
-        assertThrows(DownloadingException.class, () -> phoneCodesDownloadService.updateData(badResponse));
+        phonesUpdateService.setResponse(badResponse);
+        assertThrows(DownloadingException.class, () -> phonesUpdateService.update());
         System.out.println("incorrect string response passed");
 
         badResponse.setReceivedData(null);
-        assertThrows(DownloadingException.class, () -> phoneCodesDownloadService.updateData(badResponse));
+        phonesUpdateService.setResponse(badResponse);
+        assertThrows(DownloadingException.class, () -> phonesUpdateService.update());
         System.out.println("receivedData = null response passed");
 
+
         badResponse.setReceivedData(new ByteArrayInputStream("".getBytes()));
-        assertThrows(DownloadingException.class, () -> phoneCodesDownloadService.updateData(badResponse));
+        phonesUpdateService.setResponse(badResponse);
+        assertThrows(DownloadingException.class, () -> phonesUpdateService.update());
         System.out.println("Empty string response passed");
 
-        phoneCodesDownloadService.updateData(goodResponse);
+        phonesUpdateService.setResponse(goodResponse);
+        phonesUpdateService.update();
 
     }
+
 }

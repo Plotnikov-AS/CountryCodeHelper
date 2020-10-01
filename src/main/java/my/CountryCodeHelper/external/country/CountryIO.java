@@ -11,8 +11,8 @@ import java.net.URL;
 public class CountryIO extends ExtSystem {
     private static Logger logger = LoggerFactory.getLogger(CountryIO.class);
 
-    private final String COUNTRY_NAMES_URL = "http://country.io/names.json";
-    private final String PHONES_URL = "http://country.io/phone.json";
+    private String COUNTRY_NAMES_URL = "http://country.io/names.json";
+    private String PHONES_URL = "http://country.io/phone.json";
 
     @Override
     protected void setUrl(String url) throws MalformedURLException {

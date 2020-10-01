@@ -1,26 +1,16 @@
-package my.CountryCodeHelper.service.download;
+package my.CountryCodeHelper.service.data;
 
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import my.CountryCodeHelper.exception.DownloadingException;
 import my.CountryCodeHelper.external.ExtResponse;
-import org.springframework.dao.DataAccessResourceFailureException;
 
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.Map;
 
-public abstract class DataDownloadService {
-
-    public void execute() throws DownloadingException, DataAccessResourceFailureException {
-        updateData(downloadData());
-    }
-
-    public abstract ExtResponse downloadData() throws DownloadingException;
-
-    public abstract void updateData(ExtResponse response) throws DownloadingException, DataAccessResourceFailureException;
-
-    public Map<String, String> parseResponseToMap(ExtResponse response) throws DownloadingException {
+public abstract class ResponseParser {
+    public static Map<String, String> parseToMap(ExtResponse response) throws DownloadingException {
         try {
             InputStream receivedData = response.getReceivedData();
             if (receivedData == null || receivedData.available() <= 0) {
@@ -33,5 +23,4 @@ public abstract class DataDownloadService {
             throw new DownloadingException(e);
         }
     }
-
 }

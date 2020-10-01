@@ -5,8 +5,9 @@ import my.CountryCodeHelper.model.Country;
 import my.CountryCodeHelper.model.PhoneCode;
 import my.CountryCodeHelper.repo.proxy.CountryRepoProxy;
 import my.CountryCodeHelper.repo.proxy.PhoneCodeRepoProxy;
-import my.CountryCodeHelper.service.download.CountriesDownloadService;
-import my.CountryCodeHelper.service.download.PhoneCodesDownloadService;
+import my.CountryCodeHelper.service.data.download.CountriesDownloadService;
+import my.CountryCodeHelper.service.data.download.PhoneCodesDownloadService;
+import my.CountryCodeHelper.service.data.refresh.Refresher;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
@@ -16,7 +17,6 @@ import org.mockito.MockitoAnnotations;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.dao.DataAccessResourceFailureException;
 
-import java.sql.Date;
 import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -55,21 +55,18 @@ class CountryPhonesCombinerServiceTest {
         phoneCode.setPhoneCode("123");
 
         if (testInfo.getTestMethod().get().getName().equalsIgnoreCase("getCombinedCountryAndPhone")) {
-            doNothing().when(countriesDownloadService).execute();
-            doNothing().when(phoneCodesDownloadService).execute();
+            doNothing().when(Refresher.class);
             when(phoneCodeRepo.getByCountryCode(anyString())).thenReturn(phoneCode);
             when(countryRepo.findByCountryNameContainingIgnoreCase(anyString())).thenReturn(countries);
 
         } else if (testInfo.getTestMethod().get().getName().equalsIgnoreCase("getCombinedWhenDatabaseUnavailable")) {
             when(phoneCodeRepo.getByCountryCode(anyString())).thenReturn(phoneCode);
-            doThrow(new DataAccessResourceFailureException("")).when(countriesDownloadService).execute();
-            doThrow(new DataAccessResourceFailureException("")).when(phoneCodesDownloadService).execute();
+            doThrow(new DataAccessResourceFailureException("")).when(Refresher.class);
             when(countryRepo.findByCountryNameContainingIgnoreCase(anyString())).thenThrow(DataAccessResourceFailureException.class);
 
         } else if (testInfo.getTestMethod().get().getName().equalsIgnoreCase("getCombinedWhenExtSystemUnavailable")) {
             when(phoneCodeRepo.getByCountryCode(anyString())).thenReturn(phoneCode);
-            doThrow(DownloadingException.class).when(countriesDownloadService).execute();
-            doThrow(DownloadingException.class).when(phoneCodesDownloadService).execute();
+            doThrow(DownloadingException.class).when(Refresher.class);
             when(countryRepo.findByCountryNameContainingIgnoreCase(anyString())).thenReturn(countries);
 
         }
@@ -113,7 +110,6 @@ class CountryPhonesCombinerServiceTest {
             phoneCode.setPhoneCode("123");
             phoneCode.setCountry(country);
             country.setPhoneCode(phoneCode);
-            country.setUpdTime(new Date(System.currentTimeMillis()));
             countries.add(country);
         }
         return countries;

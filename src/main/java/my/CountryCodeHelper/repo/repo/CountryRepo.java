@@ -14,4 +14,6 @@ public interface CountryRepo extends JpaRepository<Country, Long> {
 
     @Query(value = "select * from table_country where UPPER(country_name) like CONCAT('%', UPPER(:countryName), '%')", nativeQuery = true)
     Set<Country> findByCountryNameContainingIgnoreCase(@Param("countryName") String countryName);
+
+    Set<Country> getByCountryCodeIn(Set<String> countryCodes);
 }

@@ -1,13 +1,16 @@
 package my.CountryCodeHelper.service;
 
-import my.CountryCodeHelper.exception.DataNotFoundException;
 import my.CountryCodeHelper.exception.DownloadingException;
 import my.CountryCodeHelper.model.Country;
 import my.CountryCodeHelper.model.PhoneCode;
 import my.CountryCodeHelper.repo.proxy.CountryRepoProxy;
 import my.CountryCodeHelper.repo.proxy.PhoneCodeRepoProxy;
-import my.CountryCodeHelper.service.download.CountriesDownloadService;
-import my.CountryCodeHelper.service.download.PhoneCodesDownloadService;
+import my.CountryCodeHelper.service.data.ResponseParser;
+import my.CountryCodeHelper.service.data.download.CountriesDownloadService;
+import my.CountryCodeHelper.service.data.download.PhoneCodesDownloadService;
+import my.CountryCodeHelper.service.data.refresh.Refresher;
+import my.CountryCodeHelper.service.data.update.CountriesUpdateService;
+import my.CountryCodeHelper.service.data.update.PhonesUpdateService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,7 +26,6 @@ public class CountryPhonesCombinerService {
     final PhoneCodeRepoProxy phoneCodeRepo;
     final CountriesDownloadService countriesDownloadService;
     final PhoneCodesDownloadService phoneCodesDownloadService;
-    private static final Long TWO_HOURS = 7200000L;
 
     @Autowired
     public CountryPhonesCombinerService(CountryRepoProxy countryRepo, PhoneCodeRepoProxy phoneCodeRepo, CountriesDownloadService countriesDownloadService, PhoneCodesDownloadService phoneCodesDownloadService) {
@@ -35,52 +37,64 @@ public class CountryPhonesCombinerService {
 
     public synchronized List<Map<String, String>> getCombinedCountryAndPhone(String countryName) {
         try {
-            refreshData();
-            while (PhoneCodesDownloadService.isRefreshRunning()) {
-                logger.info("... Waiting for phone refresh finishing");
-                wait(250);
-            }
             logger.info("... Start combining country name and phone code");
             List<Map<String, String>> country2phonesList = new ArrayList<>();
             Set<Country> countries = countryRepo.findByCountryNameContainingIgnoreCase(countryName);
-            logger.info("... Getted countries: " + countries);
+            if (countries.isEmpty() && !Refresher.isCountriesRefreshRunning()) {
+                logger.info("... No countries in database. Start refreshing database from country.io");
+                Refresher.refresh(countriesDownloadService);
+                waitUntilCountriesUpdatingNotFinished();
+            } else if (countries.isEmpty() && Refresher.isCountriesRefreshRunning()) {
+                waitUntilCountriesUpdatingNotFinished();
+            }
             countries.forEach(country -> {
                 Map<String, String> country2phones = new HashMap<>();
                 country2phones.put("countryCode", country.getCountryCode());
                 country2phones.put("countryName", country.getCountryName());
                 PhoneCode phoneCode = country.getPhoneCode();
-                if (phoneCode == null) {
+                if (phoneCode == null && !Refresher.isPhonesRefreshRunning()) {
                     logger.info("... Country with empty phone code. Start refreshing database from country.io");
-                    phoneCodesDownloadService.execute();
+                    Refresher.refresh(phoneCodesDownloadService);
+                    waitUntilPhonesUpdatingNotFinished();
                     phoneCode = phoneCodeRepo.getByCountryCode(country.getCountryCode());
+                } else if (phoneCode == null && Refresher.isPhonesRefreshRunning()) {
+                    waitUntilPhonesUpdatingNotFinished();
                 }
-                if (phoneCode == null) {
-                    logger.warn("... Phone code still null. Trying to get directly");
-                    Map<String, String> codes2phones = phoneCodesDownloadService.parseResponseToMap(phoneCodesDownloadService.downloadData());
-                    phoneCode = new PhoneCode();
-                    phoneCode.setPhoneCode(codes2phones.get(country.getCountryCode()));
-                    phoneCode.setCountryCode(country.getCountryCode());
-                    phoneCode.setCountry(country);
-                    phoneCodeRepo.save(phoneCode);
-                }
-                country2phones.put("phoneCode", phoneCode.getPhoneCode() == null ? "" : phoneCode.getPhoneCode());
+                country2phones.put("phoneCode", phoneCode == null || phoneCode.getPhoneCode() == null ? "" : phoneCode.getPhoneCode());
                 country2phonesList.add(country2phones);
             });
             return country2phonesList;
-        } catch (InterruptedException e) {
-            logger.error(e.getMessage());
         } catch (DataAccessResourceFailureException e) {
             logger.warn("Cant reach database.");
             return getCombinedCountryAndPhoneDirectlyFromExtSystem(countryName);
         }
-        throw new DataNotFoundException("Nothing found for " + countryName);
+    }
+
+    private synchronized void waitUntilCountriesUpdatingNotFinished() {
+        while (Refresher.isRefreshRunning(CountriesUpdateService.class)) {
+            try {
+                wait(100);
+            } catch (InterruptedException e) {
+                throw new DownloadingException(e);
+            }
+        }
+    }
+
+    private synchronized void waitUntilPhonesUpdatingNotFinished() {
+        while (Refresher.isRefreshRunning(PhonesUpdateService.class)) {
+            try {
+                wait(100);
+            } catch (InterruptedException e) {
+                throw new DownloadingException(e);
+            }
+        }
     }
 
     public synchronized List<Map<String, String>> getCombinedCountryAndPhoneDirectlyFromExtSystem(String countryName) throws DownloadingException {
         logger.info("... Getting info directly from ext system");
         List<Map<String, String>> result = new ArrayList<>();
-        Map<String, String> codes2countries = countriesDownloadService.parseResponseToMap(countriesDownloadService.downloadData());
-        Map<String, String> codes2phones = phoneCodesDownloadService.parseResponseToMap(phoneCodesDownloadService.downloadData());
+        Map<String, String> codes2countries = ResponseParser.parseToMap(countriesDownloadService.downloadData());
+        Map<String, String> codes2phones = ResponseParser.parseToMap(phoneCodesDownloadService.downloadData());
         codes2countries.forEach((code, name) -> {
             if (name.toUpperCase().contains(countryName.toUpperCase())) {
                 Map<String, String> resultElem = new HashMap<>();
@@ -92,28 +106,5 @@ public class CountryPhonesCombinerService {
         });
         return result;
 
-    }
-
-    private synchronized void refreshData() throws DataAccessResourceFailureException {
-        try {
-            if (isNeedToRefresh()) {
-                logger.info("... Need to refresh data in database");
-                if (!CountriesDownloadService.isRefreshRunning()) {
-                    logger.info("... Start refreshing countries");
-                    countriesDownloadService.execute();
-                }
-                if (!PhoneCodesDownloadService.isRefreshRunning()) {
-                    logger.info("... Start refreshing phones");
-                    phoneCodesDownloadService.execute();
-                }
-            }
-        } catch (DownloadingException e) {
-            logger.warn("Data refreshing failed: " + e.getMessage());
-        }
-    }
-
-    private synchronized boolean isNeedToRefresh() {
-        return ((System.currentTimeMillis() - CountriesDownloadService.getUpdatedTime()) > TWO_HOURS)
-                || ((System.currentTimeMillis() - PhoneCodesDownloadService.getUpdatedTime()) > TWO_HOURS);
     }
 }

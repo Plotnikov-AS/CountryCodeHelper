@@ -1,7 +1,6 @@
 package my.CountryCodeHelper.model;
 
 import javax.persistence.*;
-import java.sql.Date;
 
 @Entity
 @Table(name = "table_country")
@@ -13,8 +12,6 @@ public class Country {
     private String countryCode;
     @Column(name = "country_name")
     private String countryName;
-    @Column(name = "upd_time")
-    private Date updTime;
     @OneToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "country2phone", referencedColumnName = "id")
     private PhoneCode phoneCode;
@@ -43,14 +40,6 @@ public class Country {
         this.countryName = countryName;
     }
 
-    public Date getUpdTime() {
-        return updTime;
-    }
-
-    public void setUpdTime(Date updTime) {
-        this.updTime = updTime;
-    }
-
     public PhoneCode getPhoneCode() {
         return phoneCode;
     }
@@ -61,7 +50,17 @@ public class Country {
 
     @Override
     public String toString() {
-        return "Country: {Id:" + id + "; Country code: " + countryCode + "; Country name: " + countryName +
+        return "Country: {Country code: " + countryCode + "; Country name: " + countryName +
                 "; Phone code: " + phoneCode.getPhoneCode() + ";}";
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this.getClass() != obj.getClass()) {
+            return false;
+        }
+        return (((Country) obj).getCountryCode().equalsIgnoreCase(this.countryCode))
+                && (((Country) obj).getCountryName().equalsIgnoreCase(this.countryName))
+                && (((Country) obj).getPhoneCode().getPhoneCode().equalsIgnoreCase(this.phoneCode.getPhoneCode()));
     }
 }

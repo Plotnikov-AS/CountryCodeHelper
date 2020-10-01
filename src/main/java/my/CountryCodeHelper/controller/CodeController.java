@@ -42,7 +42,6 @@ public class CodeController {
         if (data.isEmpty()) {
             return new ResponseEntity<>(HttpStatus.NO_CONTENT);
         } else {
-            logger.info("Sending response: " + data);
             return new ResponseEntity<>(data, HttpStatus.OK);
         }
     }

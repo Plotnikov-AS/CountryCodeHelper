@@ -1,4 +1,4 @@
-package my.CountryCodeHelper.service.download;
+package my.CountryCodeHelper.service.data.update;
 
 import my.CountryCodeHelper.exception.DownloadingException;
 import my.CountryCodeHelper.external.ErrorCode;
@@ -10,27 +10,18 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
-import org.springframework.boot.test.context.SpringBootTest;
 
 import java.io.ByteArrayInputStream;
-import java.sql.Date;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.when;
 
+class CountriesUpdateServiceTest {
 
-@SpringBootTest
-class CountriesDownloadServiceTest {
     @Mock
     CountryRepoProxy countryRepo;
 
     @InjectMocks
-    CountriesDownloadService countriesDownloadService;
-
+    CountriesUpdateService countriesUpdateService;
 
     String correctCountryCode;
     Country correctCountry;
@@ -53,7 +44,6 @@ class CountriesDownloadServiceTest {
         correctCountry.setCountryName("Belgium");
         correctCountry.setCountryCode(correctCountryCode);
         correctCountry.setPhoneCode(correctPhoneCode);
-        correctCountry.setUpdTime(new Date(System.currentTimeMillis()));
 
         failureResponse = new ExtResponse();
         badResponse = new ExtResponse();
@@ -66,41 +56,37 @@ class CountriesDownloadServiceTest {
 
         badResponse.setErrorCode(ErrorCode.ERROR_CODE_OK);
         badResponse.setReceivedData(new ByteArrayInputStream("some incorrect string".getBytes()));
-
-        setMockOutput();
-    }
-
-    void setMockOutput() {
-        when(countryRepo.getByCountryCode(anyString())).thenReturn(correctCountry);
-        doNothing().when(countryRepo).save(any());
-
-        MockitoAnnotations.initMocks(this);
     }
 
     @Test
     void updateDataWithFailureResponse() {
-        assertThrows(DownloadingException.class, () -> countriesDownloadService.updateData(failureResponse));
+        countriesUpdateService.setResponse(failureResponse);
+        assertThrows(DownloadingException.class, () -> countriesUpdateService.update());
     }
 
     @Test
     void updateDataWithIncorrectStringResponse() {
-        assertThrows(DownloadingException.class, () -> countriesDownloadService.updateData(badResponse));
+        countriesUpdateService.setResponse(badResponse);
+        assertThrows(DownloadingException.class, () -> countriesUpdateService.update());
     }
 
     @Test
     void updateDataWithNullReceivedData() {
+        countriesUpdateService.setResponse(badResponse);
         badResponse.setReceivedData(null);
-        assertThrows(DownloadingException.class, () -> countriesDownloadService.updateData(badResponse));
+        assertThrows(DownloadingException.class, () -> countriesUpdateService.update());
     }
 
     @Test
     void updateDataWithEmptyStringResponse() {
+        countriesUpdateService.setResponse(badResponse);
         badResponse.setReceivedData(new ByteArrayInputStream("".getBytes()));
-        assertThrows(DownloadingException.class, () -> countriesDownloadService.updateData(badResponse));
+        assertThrows(DownloadingException.class, () -> countriesUpdateService.update());
     }
 
     @Test
     void updateDataWithCorrectResponse() throws DownloadingException {
-        countriesDownloadService.updateData(goodResponse);
+        countriesUpdateService.setResponse(goodResponse);
+        countriesUpdateService.update();
     }
 }
