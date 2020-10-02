@@ -5,6 +5,8 @@ import my.CountryCodeHelper.model.Country;
 import my.CountryCodeHelper.model.PhoneCode;
 import my.CountryCodeHelper.repo.proxy.CountryRepoProxy;
 import my.CountryCodeHelper.service.data.ResponseParser;
+import my.CountryCodeHelper.service.data.download.PhoneCodesDownloadService;
+import my.CountryCodeHelper.service.data.refresh.Refresher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,10 +20,13 @@ import java.util.TreeSet;
 public class CountriesUpdateService extends DataUpdateService {
     private final static Logger logger = LoggerFactory.getLogger(CountriesUpdateService.class);
     private final CountryRepoProxy countryRepo;
+    private final PhoneCodesDownloadService phoneCodesDownloadService;
+    private boolean isNeedToRefreshPhones;
 
     @Autowired
-    public CountriesUpdateService(CountryRepoProxy countryRepo) {
+    public CountriesUpdateService(CountryRepoProxy countryRepo, PhoneCodesDownloadService phoneCodesDownloadService) {
         this.countryRepo = countryRepo;
+        this.phoneCodesDownloadService = phoneCodesDownloadService;
     }
 
     @Override
@@ -44,7 +49,10 @@ public class CountriesUpdateService extends DataUpdateService {
                     if (country.equals(existingCountry))
                         continue;
                     countryRepo.save(country);
+                    isNeedToRefreshPhones = true;
                 }
+                if (isNeedToRefreshPhones)
+                    Refresher.refresh(phoneCodesDownloadService);
                 break;
             case ERROR_CODE_FAILURE:
                 throw new DownloadingException("External system unavailable");

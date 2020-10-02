@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.CacheConfig;
+import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -29,7 +30,7 @@ public class CountryRepoProxy {
         this.cacheManager = cacheManager;
     }
 
-    @Cacheable
+    @CachePut
     public Map<String, Country> getByCountryCodeIn(Set<String> countryCodes) {
         Set<Country> countries = countryRepo.getByCountryCodeIn(countryCodes);
         if (countries == null) {
@@ -53,7 +54,7 @@ public class CountryRepoProxy {
         return country;
     }
 
-    @Cacheable
+    @CachePut
     public Set<Country> findByCountryNameContainingIgnoreCase(String countryName) {
         logger.info("... Getting set of countries from database by name, containing " + countryName);
         Set<Country> countries = countryRepo.findByCountryNameContainingIgnoreCase(countryName);
@@ -66,6 +67,10 @@ public class CountryRepoProxy {
     public void save(Country country) {
         logger.info("... Saving country: " + country.toString());
         countryRepo.save(country);
+    }
+
+    public void flush() {
+        countryRepo.flush();
     }
 
     @Scheduled(cron = "0 0/30 * * * ?")

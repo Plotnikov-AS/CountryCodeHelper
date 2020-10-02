@@ -5,8 +5,6 @@ import my.CountryCodeHelper.repo.repo.PhoneCodeRepo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.cache.annotation.CacheConfig;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
@@ -14,7 +12,6 @@ import java.util.Map;
 import java.util.Set;
 
 @Component
-@CacheConfig(cacheNames = "countries")
 public class PhoneCodeRepoProxy {
     private static final Logger logger = LoggerFactory.getLogger(PhoneCodeRepoProxy.class);
     private final PhoneCodeRepo phoneCodeRepo;
@@ -36,7 +33,6 @@ public class PhoneCodeRepoProxy {
         }
     }
 
-    @Cacheable
     public PhoneCode getByCountryCode(String countryCode) {
         logger.info("... Getting phone from database with country code " + countryCode);
         PhoneCode phoneCode = phoneCodeRepo.getByCountryCode(countryCode);
@@ -48,7 +44,11 @@ public class PhoneCodeRepoProxy {
 
     public void save(PhoneCode phoneCode) {
         logger.info("... Saving phone in database: " + phoneCode.toString());
-        phoneCodeRepo.save(phoneCode);
+        phoneCodeRepo.saveAndFlush(phoneCode);
+    }
+
+    public void flush() {
+        phoneCodeRepo.flush();
     }
 
 }

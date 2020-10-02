@@ -40,10 +40,10 @@ public class PhonesUpdateService extends DataUpdateService {
                 Map<String, PhoneCode> phoneCodesFromDB = phoneCodeRepo.getByCountryCodeIn(codes);
                 for (Map.Entry<String, String> entry : phones2countries.entrySet()) {
                     PhoneCode phone = phoneCodesFromDB.get(entry.getKey());
-                    if (phone == null || phone.getPhoneCode().equalsIgnoreCase(entry.getValue()))
-                        continue;
-                    phone.setPhoneCode(entry.getValue());
-                    phoneCodeRepo.save(phone);
+                    if (phone != null && phone.getPhoneCode() == null) {
+                        phone.setPhoneCode(entry.getValue());
+                        phoneCodeRepo.save(phone);
+                    }
                 }
                 break;
             case ERROR_CODE_FAILURE:
